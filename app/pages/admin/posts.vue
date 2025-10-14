@@ -50,7 +50,7 @@ const { createPost, updatePost, deletePost } = usePostApi()
 const form = reactive({
   title: '',
   excerpt: '',
-  body: ''
+  content: null as Record<string, unknown> | null
 })
 
 const isSubmitting = ref(false)
@@ -59,25 +59,34 @@ const message = ref<string | null>(null)
 const resetForm = () => {
   form.title = ''
   form.excerpt = ''
-  form.body = ''
+  form.content = null
 }
 
-// 将纯文本内容转换为 TipTap 兼容的 JSON 结构
-const buildContentDoc = (body: string) => {
-  return {
-    type: 'doc',
-    content: body
-      ? body.split('\n').map((line) => ({
-          type: 'paragraph',
-          content: [{ type: 'text', text: line }]
-        }))
-      : [{ type: 'paragraph', content: [] }]
+const hasMeaningfulContent = (doc: any): boolean => {
+  if (!doc) {
+    return false
   }
+
+  const nodes = Array.isArray(doc.content) ? doc.content : []
+  return nodes.some((node) => {
+    if (!node) {
+      return false
+    }
+    if (node.type === 'text') {
+      return typeof node.text === 'string' && node.text.trim().length > 0
+    }
+    return hasMeaningfulContent(node)
+  })
 }
 
 const handleCreate = async () => {
-  if (!form.title || !form.body) {
-    message.value = '标题和正文不能为空。'
+  if (!form.title) {
+    message.value = '标题不能为空。'
+    return
+  }
+
+  if (!form.content || !hasMeaningfulContent(form.content)) {
+    message.value = '正文不能为空。'
     return
   }
 
@@ -88,7 +97,7 @@ const handleCreate = async () => {
     await createPost({
       title: form.title,
       excerpt: form.excerpt || null,
-      content: buildContentDoc(form.body),
+      content: form.content,
       status: 'DRAFT'
     })
     resetForm()
@@ -145,12 +154,9 @@ const formatDate = (value: string | null) => {
 
       <label>
         正文
-        <textarea
-          v-model="form.body"
-          rows="6"
-          required
-          placeholder="在 TipTap 编辑器接入前，这里暂时使用纯文本。"
-        />
+        <ClientOnly>
+          <RichTextEditor v-model="form.content" placeholder="撰写文章内容…" />
+        </ClientOnly>
       </label>
 
       <button type="submit" :disabled="isSubmitting">
