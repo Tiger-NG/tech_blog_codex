@@ -52,6 +52,15 @@ const quickLinks = [
 const handleRefresh = async () => {
   await refresh()
 }
+
+const handleQuickLink = async (link: string) => {
+  try {
+    console.log('[admin/index] navigating to', link)
+    await navigateTo(link)
+  } catch (error) {
+    console.error('[admin/index] navigation failed', error)
+  }
+}
 </script>
 
 <template>
@@ -96,9 +105,14 @@ const handleRefresh = async () => {
       <article v-for="item in quickLinks" :key="item.title" class="admin__card">
         <h2>{{ item.title }}</h2>
         <p>{{ item.description }}</p>
-        <NuxtLink v-if="!item.disabled" :to="item.link" class="admin__link">
+        <button
+          v-if="!item.disabled"
+          type="button"
+          class="admin__link"
+          @click="handleQuickLink(item.link)"
+        >
           {{ item.cta }}
-        </NuxtLink>
+        </button>
         <span v-else class="admin__link admin__link--disabled">
           {{ item.cta }}
         </span>
@@ -235,6 +249,16 @@ const handleRefresh = async () => {
   color: #1f2933;
   font-size: 14px;
   text-decoration: none;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0;
+  font-weight: 600;
+}
+
+.admin__link:focus-visible {
+  outline: 2px solid #111827;
+  outline-offset: 2px;
 }
 
 .admin__link--disabled {

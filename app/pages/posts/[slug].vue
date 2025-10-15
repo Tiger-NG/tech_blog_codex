@@ -43,8 +43,86 @@ const post = computed(() => data.value)
 const escapeHtml = (value: string) =>
   value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;')
 
+const escapeAttribute = (value: string) =>
+  value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#039;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+const allowedTextAlign = new Set(['left', 'center', 'right', 'justify'])
+
+const resolveAlign = (value?: string): string => {
+  if (typeof value !== 'string') {
+    return ''
+  }
+  return allowedTextAlign.has(value) ? value : ''
+}
+
+const sanitizeLink = (value: string): string | null => {
+  const trimmed = value.trim()
+  if (!trimmed) {
+    return null
+  }
+  if (trimmed.startsWith('#') || trimmed.startsWith('/')) {
+    return trimmed
+  }
+  try {
+    const url = new URL(trimmed)
+    if (['http:', 'https:', 'mailto:'].includes(url.protocol)) {
+      return url.toString()
+    }
+  } catch {
+    return null
+  }
+  return null
+}
+
+const sanitizeImageSrc = (value: string): string | null => {
+  const trimmed = value.trim()
+  if (!trimmed) {
+    return null
+  }
+  if (trimmed.startsWith('/')) {
+    return trimmed
+  }
+  try {
+    const url = new URL(trimmed)
+    if (['http:', 'https:'].includes(url.protocol)) {
+      return url.toString()
+    }
+  } catch {
+    return null
+  }
+  return null
+}
+
+const formatAlignAttr = (value?: string) => {
+  const align = resolveAlign(value)
+  if (!align || align === 'left') {
+    return ''
+  }
+  return ` style="text-align:${align};"`
+}
+
+const buildCellAttributes = (attrs: Record<string, unknown> = {}) => {
+  const parts: string[] = []
+  const align = resolveAlign(String(attrs.textAlign ?? ''))
+  if (align) {
+    parts.push(` style="text-align:${align};"`)
+  }
+  const colspan = Number(attrs.colspan ?? 0)
+  if (Number.isInteger(colspan) && colspan > 1) {
+    parts.push(` colspan="${colspan}"`)
+  }
+  const rowspan = Number(attrs.rowspan ?? 0)
+  if (Number.isInteger(rowspan) && rowspan > 1) {
+    parts.push(` rowspan="${rowspan}"`)
+  }
+  return parts.join('')
+}
+
 // 按照 TipTap mark 定义包裹文本，实现粗体、斜体等效果
-const renderMarks = (text: string, marks: Array<{ type: string }> = []) => {
+const renderMarks = (
+  text: string,
+  marks: Array<{ type: string; attrs?: Record<string, unknown> }> = []
+) => {
   return marks.reduce((acc, mark) => {
     switch (mark.type) {
       case 'bold':
@@ -58,6 +136,32 @@ const renderMarks = (text: string, marks: Array<{ type: string }> = []) => {
         return `<s>${acc}</s>`
       case 'underline':
         return `<u>${acc}</u>`
+      case 'link': {
+        const href = sanitizeLink(String(mark.attrs?.href ?? ''))
+        if (!href) {
+          return acc
+        }
+        const target =
+          typeof mark.attrs?.target === 'string'
+            ? mark.attrs.target
+            : href.startsWith('http')
+              ? '_blank'
+              : undefined
+        const targetAttr = target ? ` target="${escapeAttribute(target)}"` : ''
+        const relAttr = target === '_blank' ? ' rel="noopener noreferrer"' : ''
+        const title =
+          typeof mark.attrs?.title === 'string' && mark.attrs.title.trim()
+            ? ` title="${escapeAttribute(mark.attrs.title)}"`
+            : ''
+        return `<a href="${escapeAttribute(href)}"${targetAttr}${relAttr}${title}>${acc}</a>`
+      }
+      case 'textStyle': {
+        const color = mark.attrs?.color
+        if (typeof color === 'string' && color.trim()) {
+          return `<span style="color:${escapeAttribute(color)}">${acc}</span>`
+        }
+        return acc
+      }
       default:
         return acc
     }
@@ -78,10 +182,10 @@ const renderNodes = (nodes: any): string => {
       }
       switch (node.type) {
         case 'paragraph':
-          return `<p>${renderNodes(node.content)}</p>`
+          return `<p${formatAlignAttr(node.attrs?.textAlign)}>${renderNodes(node.content)}</p>`
         case 'heading': {
           const level = Math.min(Math.max(node.attrs?.level ?? 1, 1), 6)
-          return `<h${level}>${renderNodes(node.content)}</h${level}>`
+          return `<h${level}${formatAlignAttr(node.attrs?.textAlign)}>${renderNodes(node.content)}</h${level}>`
         }
         case 'bulletList':
           return `<ul>${renderNodes(node.content)}</ul>`
@@ -91,10 +195,50 @@ const renderNodes = (nodes: any): string => {
           return `<li>${renderNodes(node.content)}</li>`
         case 'blockquote':
           return `<blockquote>${renderNodes(node.content)}</blockquote>`
-        case 'codeBlock':
-          return `<pre><code>${renderNodes(node.content)}</code></pre>`
+        case 'codeBlock': {
+          const code = Array.isArray(node.content)
+            ? node.content.map((child: any) => escapeHtml(child?.text ?? '')).join('')
+            : escapeHtml(node.content?.text ?? '')
+          return `<pre><code>${code}</code></pre>`
+        }
         case 'horizontalRule':
           return '<hr />'
+        case 'hardBreak':
+          return '<br />'
+        case 'image': {
+          const src = sanitizeImageSrc(String(node.attrs?.src ?? ''))
+          if (!src) {
+            return ''
+          }
+          const alt =
+            typeof node.attrs?.alt === 'string' && node.attrs.alt
+              ? escapeAttribute(node.attrs.alt)
+              : ''
+          const title =
+            typeof node.attrs?.title === 'string' && node.attrs.title
+              ? ` title="${escapeAttribute(node.attrs.title)}"`
+              : ''
+          return `<figure class="post__figure"><img src="${escapeAttribute(src)}" alt="${alt}"${title}></figure>`
+        }
+        case 'table': {
+          const rows = Array.isArray(node.content) ? node.content : []
+          const headerRows = rows.filter(
+            (row: any) =>
+              Array.isArray(row?.content) && row.content.some((cell: any) => cell?.type === 'tableHeader')
+          )
+          const bodyRows = headerRows.length ? rows.filter((row: any) => !headerRows.includes(row)) : rows
+          const headHtml = headerRows.length
+            ? `<thead>${headerRows.map((row: any) => renderNodes(row)).join('')}</thead>`
+            : ''
+          const bodyHtml = `<tbody>${bodyRows.map((row: any) => renderNodes(row)).join('')}</tbody>`
+          return `<div class="post__table-wrapper"><table>${headHtml}${bodyHtml}</table></div>`
+        }
+        case 'tableRow':
+          return `<tr>${renderNodes(node.content)}</tr>`
+        case 'tableHeader':
+          return `<th${buildCellAttributes(node.attrs)}>${renderNodes(node.content)}</th>`
+        case 'tableCell':
+          return `<td${buildCellAttributes(node.attrs)}>${renderNodes(node.content)}</td>`
         case 'text': {
           const text = escapeHtml(node.text ?? '')
           return renderMarks(text, node.marks)
@@ -200,6 +344,11 @@ const formatDate = (value?: string | null) => {
   color: #111827;
 }
 
+.post__content :global(a) {
+  color: #2563eb;
+  text-decoration: underline;
+}
+
 .post__content :global(ul),
 .post__content :global(ol) {
   margin: 16px 0 16px 24px;
@@ -228,5 +377,43 @@ const formatDate = (value?: string | null) => {
   background-color: rgba(99, 102, 241, 0.1);
   padding: 2px 4px;
   border-radius: 4px;
+}
+
+.post__content :global(img) {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 10px;
+  margin: 20px auto;
+}
+
+.post__content :global(.post__figure) {
+  margin: 24px 0;
+  text-align: center;
+}
+
+.post__content :global(.post__table-wrapper) {
+  width: 100%;
+  overflow-x: auto;
+  margin: 24px 0;
+}
+
+.post__content :global(table) {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  background-color: #ffffff;
+}
+
+.post__content :global(th),
+.post__content :global(td) {
+  border: 1px solid #e5e7eb;
+  padding: 10px;
+  text-align: left;
+}
+
+.post__content :global(th) {
+  background-color: #f3f4f6;
+  font-weight: 600;
 }
 </style>
