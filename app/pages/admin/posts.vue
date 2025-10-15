@@ -47,6 +47,20 @@ const pagination = computed(() => data.value?.pagination)
 
 const { createPost, updatePost, deletePost } = usePostApi()
 
+type PostStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED'
+
+interface AdminPostDetail {
+  id: string
+  title: string
+  slug: string
+  excerpt: string | null
+  content: Record<string, unknown> | null
+  status: PostStatus
+  publishedAt: string | null
+  createdAt: string
+  updatedAt: string
+}
+
 const form = reactive({
   title: '',
   excerpt: '',
@@ -56,10 +70,34 @@ const form = reactive({
 const isSubmitting = ref(false)
 const message = ref<string | null>(null)
 
+const editingState = reactive({
+  id: null as string | null,
+  title: '',
+  loading: false as boolean
+})
+
+const isEditing = computed(() => editingState.id !== null)
+const editingTitle = computed(() => editingState.title)
+
 const resetForm = () => {
   form.title = ''
   form.excerpt = ''
   form.content = null
+}
+
+const exitEditing = () => {
+  editingState.id = null
+  editingState.title = ''
+  editingState.loading = false
+}
+
+const cancelEdit = () => {
+  if (!isEditing.value) {
+    return
+  }
+  exitEditing()
+  resetForm()
+  message.value = '已取消编辑。'
 }
 
 const hasMeaningfulContent = (doc: any): boolean => {
@@ -79,14 +117,22 @@ const hasMeaningfulContent = (doc: any): boolean => {
   })
 }
 
-const handleCreate = async () => {
+const validateForm = (): boolean => {
   if (!form.title) {
     message.value = '标题不能为空。'
-    return
+    return false
   }
 
   if (!form.content || !hasMeaningfulContent(form.content)) {
     message.value = '正文不能为空。'
+    return false
+  }
+
+  return true
+}
+
+const createNewPost = async () => {
+  if (!validateForm()) {
     return
   }
 
@@ -110,10 +156,70 @@ const handleCreate = async () => {
   }
 }
 
+const updateExistingPost = async () => {
+  if (!isEditing.value || !editingState.id) {
+    return
+  }
+
+  if (!validateForm()) {
+    return
+  }
+
+  isSubmitting.value = true
+  message.value = null
+
+  try {
+    await updatePost(editingState.id, {
+      title: form.title,
+      excerpt: form.excerpt || null,
+      content: form.content ?? undefined
+    })
+    message.value = '文章已更新。'
+    exitEditing()
+    resetForm()
+    await refresh()
+  } catch (error) {
+    message.value = error instanceof Error ? error.message : '更新文章失败，请稍后再试。'
+  } finally {
+    isSubmitting.value = false
+  }
+}
+
+const handleSubmit = async () => {
+  if (isEditing.value) {
+    await updateExistingPost()
+  } else {
+    await createNewPost()
+  }
+}
+
 const togglePublish = async (post: (typeof posts.value)[number]) => {
   const nextStatus = post.status === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED'
   await updatePost(post.id, { status: nextStatus })
   await refresh()
+}
+
+const startEdit = async (post: (typeof posts.value)[number]) => {
+  if (editingState.loading) {
+    return
+  }
+
+  message.value = null
+  editingState.loading = true
+
+  try {
+    const detail = await $fetch<AdminPostDetail>(`/api/admin/posts/${post.id}`)
+    editingState.id = detail.id
+    editingState.title = detail.title
+    form.title = detail.title
+    form.excerpt = detail.excerpt ?? ''
+    form.content = (detail.content as Record<string, unknown> | null) ?? null
+  } catch (error) {
+    message.value = error instanceof Error ? error.message : '加载文章详情失败，请稍后再试。'
+    exitEditing()
+  } finally {
+    editingState.loading = false
+  }
 }
 
 const handleDelete = async (post: (typeof posts.value)[number]) => {
@@ -121,6 +227,10 @@ const handleDelete = async (post: (typeof posts.value)[number]) => {
     return
   }
   await deletePost(post.id)
+  if (editingState.id === post.id) {
+    exitEditing()
+    resetForm()
+  }
   await refresh()
 }
 
@@ -140,8 +250,20 @@ const formatDate = (value: string | null) => {
       <p>创建新文章或管理现有内容。</p>
     </header>
 
-    <form class="admin-posts__form" @submit.prevent="handleCreate">
-      <h2>新建文章</h2>
+    <form class="admin-posts__form" @submit.prevent="handleSubmit">
+      <h2>{{ isEditing ? '编辑文章' : '新建文章' }}</h2>
+      <div v-if="isEditing" class="admin-posts__editing-banner">
+        <span>正在编辑：《{{ editingTitle }}》</span>
+        <button
+          type="button"
+          class="admin-posts__cancel"
+          :disabled="isSubmitting || editingState.loading"
+          @click="cancelEdit"
+        >
+          取消编辑
+        </button>
+      </div>
+
       <label>
         标题
         <input v-model="form.title" type="text" required placeholder="文章标题">
@@ -155,12 +277,20 @@ const formatDate = (value: string | null) => {
       <label>
         正文
         <ClientOnly>
-          <RichTextEditor v-model="form.content" placeholder="撰写文章内容…" />
+          <RichTextEditor
+            v-model="form.content"
+            placeholder="撰写文章内容…"
+            :editable="!isSubmitting && !editingState.loading"
+          />
         </ClientOnly>
       </label>
 
-      <button type="submit" :disabled="isSubmitting">
-        {{ isSubmitting ? '保存中…' : '保存为草稿' }}
+      <button
+        type="submit"
+        class="admin-posts__submit"
+        :disabled="isSubmitting || editingState.loading"
+      >
+        {{ isSubmitting ? '保存中…' : isEditing ? '保存修改' : '保存为草稿' }}
       </button>
       <p v-if="message" class="admin-posts__message">
         {{ message }}
@@ -194,6 +324,13 @@ const formatDate = (value: string | null) => {
             <td>{{ post.status }}</td>
             <td>{{ formatDate(post.publishedAt) }}</td>
             <td class="admin-posts__actions">
+              <button
+                type="button"
+                :disabled="editingState.loading || (isEditing && editingState.id === post.id)"
+                @click="startEdit(post)"
+              >
+                编辑
+              </button>
               <button type="button" @click="togglePublish(post)">
                 {{ post.status === 'PUBLISHED' ? '下线' : '发布' }}
               </button>
@@ -268,7 +405,7 @@ const formatDate = (value: string | null) => {
   font-size: 14px;
 }
 
-.admin-posts__form button {
+.admin-posts__submit {
   align-self: flex-start;
   background-color: #1f2933;
   color: #ffffff;
@@ -278,8 +415,40 @@ const formatDate = (value: string | null) => {
   cursor: pointer;
 }
 
-.admin-posts__form button:disabled {
+.admin-posts__submit:disabled {
   opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.admin-posts__editing-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background-color: #f3f4f6;
+  font-size: 13px;
+  color: #1f2933;
+}
+
+.admin-posts__cancel {
+  appearance: none;
+  border: none;
+  background: none;
+  color: #2563eb;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.admin-posts__cancel:hover {
+  background-color: rgba(37, 99, 235, 0.08);
+}
+
+.admin-posts__cancel:disabled {
+  opacity: 0.6;
   cursor: not-allowed;
 }
 
@@ -323,6 +492,11 @@ const formatDate = (value: string | null) => {
 
 .admin-posts__actions button:hover {
   background-color: #d1d5db;
+}
+
+.admin-posts__actions button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .admin-posts__actions .danger {
