@@ -43,131 +43,242 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <div class="auth-card">
-    <h1 class="auth-card__title">登录</h1>
-    <form class="auth-card__form" @submit.prevent="handleSubmit">
-      <label class="auth-card__label">
-        邮箱
-        <input
-          v-model="email"
-          type="email"
-          required
-          autocomplete="email"
-          class="auth-card__input"
-        >
-      </label>
+  <section class="auth auth--login">
+    <div class="auth__background" aria-hidden="true"></div>
+    <div class="auth__shell">
+      <div class="auth__brand">
+        <span class="auth__brand-badge">Tech Blog</span>
+        <h1 class="auth__title">欢迎回来</h1>
+        <p class="auth__subtitle">
+          使用个人凭据登录，继续你的技术旅程。
+        </p>
+      </div>
 
-      <label class="auth-card__label">
-        密码
-        <input
-          v-model="password"
-          type="password"
-          required
-          minlength="8"
-          autocomplete="current-password"
-          class="auth-card__input"
-        >
-      </label>
+      <div class="auth__card">
+        <form class="auth__form" @submit.prevent="handleSubmit">
+          <label class="auth__label">
+            邮箱
+            <input
+              v-model="email"
+              type="email"
+              required
+              autocomplete="email"
+              class="auth__input"
+            >
+          </label>
 
-      <p v-if="errorMessage" class="auth-card__error">
-        {{ errorMessage }}
-      </p>
+          <label class="auth__label">
+            密码
+            <input
+              v-model="password"
+              type="password"
+              required
+              minlength="8"
+              autocomplete="current-password"
+              class="auth__input"
+            >
+          </label>
 
-      <button
-        type="submit"
-        class="auth-card__button"
-        :disabled="isSubmitting"
-      >
-        {{ isSubmitting ? '登录中…' : '登录' }}
-      </button>
-    </form>
+          <p v-if="errorMessage" class="auth__error">
+            {{ errorMessage }}
+          </p>
 
-    <p class="auth-card__footer">
-      还没有账号？
-      <NuxtLink to="/register">立即注册</NuxtLink>
-    </p>
-  </div>
+          <button
+            type="submit"
+            class="auth__button"
+            :disabled="isSubmitting"
+          >
+            {{ isSubmitting ? '登录中…' : '登录' }}
+          </button>
+        </form>
+
+        <p class="auth__footer">
+          还没有账号？
+          <NuxtLink to="/register">立即注册</NuxtLink>
+        </p>
+      </div>
+    </div>
+  </section>
 </template>
 
 <style scoped>
-.auth-card {
-  background-color: #ffffff;
-  border-radius: 8px;
-  padding: 32px;
-  max-width: 400px;
-  margin: 0 auto;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+.auth {
+  position: relative;
+  min-height: calc(100dvh - 80px);
+  display: grid;
+  place-items: center;
+  padding: clamp(20px, 5vw, 56px) 0;
 }
 
-.auth-card__title {
-  margin-bottom: 24px;
-  font-size: 24px;
-  font-weight: 600;
-  text-align: center;
+.auth__shell {
+  position: relative;
+  width: min(100%, 880px);
+  margin-inline: auto;
+  display: grid;
+  gap: clamp(24px, 5vw, 40px);
+  background: rgba(15, 23, 42, 0.92);
+  border-radius: 20px;
+  padding: clamp(28px, 5vw, 48px);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.32);
+  color: #e2e8f0;
+  overflow: hidden;
+  z-index: 1;
+  align-items: center;
 }
 
-.auth-card__form {
+.auth__background {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at top left, rgba(56, 189, 248, 0.28), transparent 55%),
+    radial-gradient(circle at bottom right, rgba(45, 212, 191, 0.24), transparent 60%);
+  filter: blur(80px);
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.auth__brand {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 16px;
+  z-index: 1;
 }
 
-.auth-card__label {
+.auth__brand-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 9999px;
+  border: 1px solid rgba(226, 232, 240, 0.3);
+  background: rgba(226, 232, 240, 0.06);
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.auth__title {
+  font-size: clamp(28px, 4vw, 36px);
+  font-weight: 700;
+  margin: 0;
+}
+
+.auth__subtitle {
+  font-size: clamp(14px, 2vw, 16px);
+  color: rgba(226, 232, 240, 0.78);
+  margin: 0;
+  line-height: 1.7;
+}
+
+.auth__card {
+  position: relative;
+  backdrop-filter: blur(12px);
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(226, 232, 240, 0.16);
+  border-radius: 16px;
+  padding: clamp(24px, 4vw, 32px);
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.3);
   display: flex;
   flex-direction: column;
-  font-size: 14px;
-  color: #52606d;
+  gap: 20px;
+  z-index: 1;
+}
+
+.auth__form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.auth__label {
+  display: flex;
+  flex-direction: column;
   gap: 6px;
-}
-
-.auth-card__input {
-  padding: 10px 12px;
-  border: 1px solid #d8dde6;
-  border-radius: 6px;
   font-size: 14px;
-  transition: border-color 0.2s ease;
+  color: rgba(226, 232, 240, 0.85);
 }
 
-.auth-card__input:focus {
-  border-color: #6366f1;
+.auth__input {
+  padding: 10px 12px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 8px;
+  font-size: 14px;
+  background: rgba(15, 23, 42, 0.6);
+  color: #f8fafc;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.auth__input:focus {
+  border-color: rgba(94, 234, 212, 0.7);
+  background: rgba(15, 23, 42, 0.85);
   outline: none;
+  box-shadow: 0 0 0 3px rgba(94, 234, 212, 0.15);
 }
 
-.auth-card__error {
-  color: #dc2626;
+.auth__error {
+  color: #fca5a5;
   font-size: 13px;
   text-align: center;
 }
 
-.auth-card__button {
-  background-color: #1f2933;
-  color: #ffffff;
+.auth__button {
+  background: linear-gradient(135deg, #22d3ee, #0ea5e9);
+  color: #0b1120;
   border: none;
   padding: 12px;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 15px;
+  font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.auth-card__button:disabled {
-  opacity: 0.7;
+.auth__button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(14, 165, 233, 0.35);
+}
+
+.auth__button:disabled {
+  opacity: 0.65;
   cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
-.auth-card__button:not(:disabled):hover {
-  background-color: #111827;
-}
-
-.auth-card__footer {
-  margin-top: 16px;
-  font-size: 13px;
+.auth__footer {
   text-align: center;
-  color: #52606d;
+  font-size: 13px;
+  color: rgba(226, 232, 240, 0.7);
 }
 
-.auth-card__footer a {
-  color: #1f2933;
+.auth__footer a {
+  color: #38bdf8;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.auth__footer a:hover {
   text-decoration: underline;
+}
+
+@media (min-width: 860px) {
+  .auth__shell {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+  }
+
+  .auth__card {
+    align-self: center;
+  }
+}
+
+@media (max-width: 640px) {
+  .auth {
+    min-height: 100vh;
+  }
+
+  .auth__brand {
+    align-items: flex-start;
+  }
 }
 </style>

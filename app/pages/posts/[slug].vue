@@ -346,27 +346,40 @@ const formatDate = (value?: string | null) => {
 </script>
 
 <template>
-  <article v-if="post" class="post">
-    <header class="post__header">
-      <h1 class="post__title">
-        {{ post.title }}
-      </h1>
-      <div class="post__meta">
-        <span>作者：{{ post.author.name || post.author.email || '匿名' }}</span>
-        <span>发布时间：{{ formatDate(post.publishedAt ?? post.createdAt) }}</span>
-      </div>
-      <p v-if="post.excerpt" class="post__excerpt">
-        {{ post.excerpt }}
-      </p>
-      <ul v-if="post.tags.length" class="post__tags">
-        <li v-for="tag in post.tags" :key="tag.tag.id">
-          #{{ tag.tag.name }}
-        </li>
-      </ul>
-    </header>
-    <div class="post__content" v-html="contentHtml" />
-  </article>
-  <section class="comments">
+  <section class="article" v-if="post">
+    <nav class="article__nav" aria-label="页面导航">
+      <NuxtLink to="/" class="article__nav-link">
+        ← 返回首页
+      </NuxtLink>
+    </nav>
+    <article class="article__container">
+      <header class="article__header">
+        <p class="article__eyebrow">Tech Blog · Insight</p>
+        <h1 class="article__title">
+          {{ post.title }}
+        </h1>
+        <div class="article__meta">
+          <span class="article__pill">
+            作者 · {{ post.author.name || post.author.email || '匿名' }}
+          </span>
+          <span class="article__pill article__pill--accent">
+            发布于 · {{ formatDate(post.publishedAt ?? post.createdAt) }}
+          </span>
+        </div>
+        <p v-if="post.excerpt" class="article__excerpt">
+          {{ post.excerpt }}
+        </p>
+        <ul v-if="post.tags.length" class="article__tags">
+          <li v-for="tag in post.tags" :key="tag.tag.id" class="article__tag">
+            #{{ tag.tag.name }}
+          </li>
+        </ul>
+        <div class="article__divider" aria-hidden="true"></div>
+      </header>
+      <div class="article__content" v-html="contentHtml" />
+    </article>
+  </section>
+  <section class="comments" v-if="post">
     <h2 class="comments__title">
       评论
       <span class="comments__count">({{ comments.length }})</span>
@@ -431,71 +444,146 @@ const formatDate = (value?: string | null) => {
 </template>
 
 <style scoped>
-.post {
-  background-color: #ffffff;
-  border-radius: 10px;
-  padding: 36px;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+.article {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(20px, 5vw, 40px);
 }
 
-.post__title {
-  font-size: 32px;
+.article__nav {
+  width: min(100%, 720px);
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.article__nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: #0369a1;
+  text-decoration: none;
+  padding: 6px 0;
+}
+
+.article__nav-link:hover {
+  text-decoration: underline;
+}
+
+.article__container {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: clamp(22px, 5vw, 40px);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.12);
+  width: min(100%, 720px);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(18px, 4vw, 28px);
+}
+
+.article__header {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(14px, 3vw, 22px);
+}
+
+.article__eyebrow {
+  font-size: clamp(11px, 1.8vw, 12px);
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: rgba(100, 116, 139, 0.9);
+}
+
+.article__title {
+  font-size: clamp(28px, 4.2vw, 40px);
   font-weight: 700;
-  margin-bottom: 12px;
+  line-height: 1.25;
+  margin: 0;
+  color: #0f172a;
 }
 
-.post__meta {
+.article__meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
-  font-size: 14px;
-  color: #6b7280;
-  margin-bottom: 16px;
+  gap: 10px;
+  align-items: center;
 }
 
-.post__excerpt {
-  font-size: 16px;
-  color: #4b5563;
+.article__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 9999px;
+  background: rgba(226, 232, 240, 0.6);
+  color: #1e293b;
+}
+
+.article__pill--accent {
+  background: rgba(56, 189, 248, 0.25);
+  color: #0f172a;
+}
+
+.article__excerpt {
+  font-size: clamp(15px, 2.2vw, 18px);
   line-height: 1.7;
-  margin-bottom: 20px;
+  color: #475569;
+  margin: 0;
 }
 
-.post__tags {
+.article__tags {
   list-style: none;
   padding: 0;
+  margin: 0;
   display: flex;
-  gap: 12px;
-  font-size: 13px;
-  color: #6366f1;
-  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
-.post__content :global(p) {
-  margin: 16px 0;
+.article__tag {
+  font-size: 12px;
+  color: #2563eb;
+}
+
+.article__divider {
+  height: 1px;
+  background: linear-gradient(90deg, rgba(148, 163, 184, 0), rgba(148, 163, 184, 0.8), rgba(148, 163, 184, 0));
+}
+
+.article__content {
+  font-size: 15px;
   line-height: 1.8;
   color: #1f2933;
 }
 
-.post__content :global(h2),
-.post__content :global(h3),
-.post__content :global(h4) {
-  margin: 28px 0 16px;
-  font-weight: 600;
-  color: #111827;
+.article__content :global(p) {
+  margin: 16px 0;
 }
 
-.post__content :global(a) {
+.article__content :global(h2),
+.article__content :global(h3),
+.article__content :global(h4) {
+  margin: 28px 0 16px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.article__content :global(a) {
   color: #2563eb;
   text-decoration: underline;
 }
 
-.post__content :global(ul),
-.post__content :global(ol) {
+.article__content :global(ul),
+.article__content :global(ol) {
   margin: 16px 0 16px 24px;
   line-height: 1.7;
 }
 
-.post__content :global(blockquote) {
+.article__content :global(blockquote) {
   border-left: 3px solid #cbd5f5;
   padding-left: 16px;
   margin: 16px 0;
@@ -503,23 +591,23 @@ const formatDate = (value?: string | null) => {
   font-style: italic;
 }
 
-.post__content :global(pre) {
-  background-color: #1f2937;
+.article__content :global(pre) {
+  background-color: #0f172a;
   color: #e5e7eb;
-  padding: 16px;
-  border-radius: 8px;
+  padding: 18px;
+  border-radius: 10px;
   overflow-x: auto;
   font-family: 'Fira Code', monospace;
 }
 
-.post__content :global(code) {
+.article__content :global(code) {
   font-family: 'Fira Code', monospace;
   background-color: rgba(99, 102, 241, 0.1);
   padding: 2px 4px;
   border-radius: 4px;
 }
 
-.post__content :global(img) {
+.article__content :global(img) {
   max-width: 100%;
   height: auto;
   display: block;
@@ -527,49 +615,50 @@ const formatDate = (value?: string | null) => {
   margin: 20px auto;
 }
 
-.post__content :global(.post__figure) {
+.article__content :global(.post__figure) {
   margin: 24px 0;
   text-align: center;
 }
 
-.post__content :global(.post__table-wrapper) {
+.article__content :global(.post__table-wrapper) {
   width: 100%;
   overflow-x: auto;
   margin: 24px 0;
 }
 
-.post__content :global(table) {
+.article__content :global(table) {
   width: 100%;
   border-collapse: collapse;
   font-size: 14px;
   background-color: #ffffff;
 }
 
-.post__content :global(th),
-.post__content :global(td) {
+.article__content :global(th),
+.article__content :global(td) {
   border: 1px solid #e5e7eb;
   padding: 10px;
   text-align: left;
 }
 
-.post__content :global(th) {
+.article__content :global(th) {
   background-color: #f3f4f6;
   font-weight: 600;
 }
 
 .comments {
-  margin-top: 32px;
+  margin: clamp(28px, 6vw, 40px) auto 0;
   background-color: #ffffff;
-  border-radius: 10px;
-  padding: 28px;
+  border-radius: 12px;
+  padding: clamp(22px, 5vw, 36px);
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
   display: flex;
   flex-direction: column;
   gap: 20px;
+  width: min(100%, 720px);
 }
 
 .comments__title {
-  font-size: 20px;
+  font-size: clamp(18px, 2.6vw, 22px);
   font-weight: 600;
   color: #111827;
   display: flex;
@@ -586,7 +675,7 @@ const formatDate = (value?: string | null) => {
   background-color: #f9fafb;
   border: 1px solid #e5e7eb;
   border-radius: 10px;
-  padding: 16px;
+  padding: clamp(14px, 3vw, 18px);
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -697,5 +786,26 @@ const formatDate = (value?: string | null) => {
 .comments__loading {
   font-size: 14px;
   color: #6b7280;
+}
+
+@media (max-width: 700px) {
+  .article__nav,
+  .article__container,
+  .comments {
+    width: min(100% - 24px, 720px);
+  }
+
+  .article__meta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (min-width: 1440px) {
+  .article__nav,
+  .article__container,
+  .comments {
+    width: min(100% - 120px, 820px);
+  }
 }
 </style>
