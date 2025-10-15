@@ -39,6 +39,40 @@ if (error.value) {
 
 const post = computed(() => data.value)
 
+const { status: authStatus } = useAuth()
+
+interface PostComment {
+  id: string
+  content: string
+  createdAt: string
+  author: { name: string | null; email: string | null } | null
+}
+
+const {
+  data: commentsData,
+  status: commentsStatus,
+  refresh: refreshComments
+} = await useAsyncData(
+  () => `/posts:comments:${slug.value}`,
+  () =>
+    $fetch<PostComment[]>(`/api/posts/${slug.value}/comments`),
+  {
+    watch: [slug]
+  }
+)
+
+const comments = computed(() => commentsData.value ?? [])
+
+const commentForm = reactive({
+  content: ''
+})
+
+const isCommentSubmitting = ref(false)
+const commentMessage = ref<string | null>(null)
+
+const isAuthenticated = computed(() => authStatus.value === 'authenticated')
+const isAuthLoading = computed(() => authStatus.value === 'loading')
+
 // TipTap 文档为 JSON，需要先进行转义再渲染
 const escapeHtml = (value: string) =>
   value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;')
@@ -258,6 +292,50 @@ const contentHtml = computed(() => {
   return renderNodes(post.value.content.content ?? post.value.content)
 })
 
+const handleCommentSubmit = async () => {
+  if (!isAuthenticated.value) {
+    commentMessage.value = '请先登录后再发表评论。'
+    return
+  }
+
+  const content = commentForm.content.trim()
+
+  if (!content) {
+    commentMessage.value = '评论内容不能为空。'
+    return
+  }
+
+  if (content.length > 1000) {
+    commentMessage.value = '评论内容不能超过 1000 字。'
+    return
+  }
+
+  isCommentSubmitting.value = true
+  commentMessage.value = null
+
+  try {
+    await $fetch(`/api/posts/${slug.value}/comments`, {
+      method: 'POST',
+      body: { content }
+    })
+    commentForm.content = ''
+    await refreshComments()
+    commentMessage.value = '评论已发布。'
+  } catch (error) {
+    if (error && typeof error === 'object' && 'data' in error && error.data) {
+      const data = (error as { data?: { statusMessage?: string } }).data
+      commentMessage.value =
+        (data?.statusMessage && data.statusMessage.trim()) || '发表评论失败，请稍后再试。'
+    } else if (error instanceof Error) {
+      commentMessage.value = error.message
+    } else {
+      commentMessage.value = '发表评论失败，请稍后再试。'
+    }
+  } finally {
+    isCommentSubmitting.value = false
+  }
+}
+
 // 发布或创建时间的友好展示
 const formatDate = (value?: string | null) => {
   if (!value) {
@@ -288,6 +366,68 @@ const formatDate = (value?: string | null) => {
     </header>
     <div class="post__content" v-html="contentHtml" />
   </article>
+  <section class="comments">
+    <h2 class="comments__title">
+      评论
+      <span class="comments__count">({{ comments.length }})</span>
+    </h2>
+    <div v-if="commentsStatus === 'pending'" class="comments__loading">
+      正在加载评论……
+    </div>
+    <template v-else>
+      <div class="comments__form-wrapper">
+        <div v-if="isAuthenticated" class="comments__form">
+          <textarea
+            v-model="commentForm.content"
+            class="comments__input"
+            rows="4"
+            maxlength="1000"
+            placeholder="写下你的想法，最多 1000 字。"
+            :disabled="isCommentSubmitting"
+          />
+          <div class="comments__controls">
+            <button
+              type="button"
+              class="comments__submit"
+              :disabled="isCommentSubmitting"
+              @click="handleCommentSubmit"
+            >
+              {{ isCommentSubmitting ? '提交中…' : '发表评论' }}
+            </button>
+          </div>
+        </div>
+        <div v-else-if="isAuthLoading" class="comments__signin">
+          正在检测登录状态…
+        </div>
+        <div v-else class="comments__signin">
+          请
+          <NuxtLink to="/login">登录</NuxtLink>
+          后发表评论。
+        </div>
+      </div>
+      <p v-if="commentMessage" class="comments__message">
+        {{ commentMessage }}
+      </p>
+      <ul v-if="comments.length" class="comments__list">
+        <li v-for="comment in comments" :key="comment.id" class="comments__item">
+          <div class="comments__meta">
+            <span class="comments__author">
+              {{ comment.author?.name || comment.author?.email || '匿名用户' }}
+            </span>
+            <span class="comments__time">
+              {{ formatDate(comment.createdAt) }}
+            </span>
+          </div>
+          <p class="comments__content">
+            {{ comment.content }}
+          </p>
+        </li>
+      </ul>
+      <div v-else class="comments__empty">
+        还没有评论，抢先发表你的想法吧。
+      </div>
+    </template>
+  </section>
 </template>
 
 <style scoped>
@@ -415,5 +555,147 @@ const formatDate = (value?: string | null) => {
 .post__content :global(th) {
   background-color: #f3f4f6;
   font-weight: 600;
+}
+
+.comments {
+  margin-top: 32px;
+  background-color: #ffffff;
+  border-radius: 10px;
+  padding: 28px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.comments__title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #111827;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.comments__count {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.comments__form-wrapper {
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.comments__form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.comments__input {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 14px;
+  line-height: 1.6;
+  resize: vertical;
+  background-color: #ffffff;
+}
+
+.comments__input:disabled {
+  background-color: #f3f4f6;
+  cursor: not-allowed;
+}
+
+.comments__controls {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.comments__submit {
+  background-color: #2563eb;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.comments__submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.comments__signin {
+  font-size: 14px;
+  color: #4b5563;
+}
+
+.comments__signin a {
+  color: #2563eb;
+  text-decoration: underline;
+}
+
+.comments__message {
+  font-size: 13px;
+  color: #4b5563;
+}
+
+.comments__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.comments__item {
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 16px;
+}
+
+.comments__item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.comments__meta {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  font-size: 13px;
+  color: #6b7280;
+  margin-bottom: 8px;
+}
+
+.comments__author {
+  font-weight: 600;
+  color: #1f2933;
+}
+
+.comments__content {
+  font-size: 14px;
+  color: #1f2933;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.comments__empty {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.comments__loading {
+  font-size: 14px;
+  color: #6b7280;
 }
 </style>
