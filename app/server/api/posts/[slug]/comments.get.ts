@@ -1,18 +1,33 @@
 import { createError, defineEventHandler } from 'h3'
 import { getRouterParam } from 'h3'
 import { getPrismaClient } from '~/server/utils/prisma'
+import { z } from 'zod'
 
 const prisma = getPrismaClient()
 
-export default defineEventHandler(async (event) => {
-  const slug = getRouterParam(event, 'slug')
+const slugSchema = z.object({
+  slug: z
+    .string({
+      required_error: 'Missing post slug'
+    })
+    .trim()
+    .min(1, 'Missing post slug')
+    .max(191, 'Invalid post slug')
+})
 
-  if (!slug) {
+export default defineEventHandler(async (event) => {
+  const result = slugSchema.safeParse({
+    slug: getRouterParam(event, 'slug')
+  })
+
+  if (!result.success) {
     throw createError({
       statusCode: 400,
       statusMessage: 'Missing post slug'
     })
   }
+
+  const { slug } = result.data
 
   const post = await prisma.post.findUnique({
     where: {

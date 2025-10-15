@@ -38,6 +38,15 @@ importers:
       '@tiptap/extension-table':
         specifier: latest
         version: 3.7.0(@tiptap/core@3.7.0(@tiptap/pm@3.7.0))(@tiptap/pm@3.7.0)
+      '@tiptap/extension-table-cell':
+        specifier: latest
+        version: 3.7.0(@tiptap/extension-table@3.7.0(@tiptap/core@3.7.0(@tiptap/pm@3.7.0))(@tiptap/pm@3.7.0))
+      '@tiptap/extension-table-header':
+        specifier: latest
+        version: 3.7.0(@tiptap/extension-table@3.7.0(@tiptap/core@3.7.0(@tiptap/pm@3.7.0))(@tiptap/pm@3.7.0))
+      '@tiptap/extension-table-row':
+        specifier: latest
+        version: 3.7.0(@tiptap/extension-table@3.7.0(@tiptap/core@3.7.0(@tiptap/pm@3.7.0))(@tiptap/pm@3.7.0))
       '@tiptap/extension-text-align':
         specifier: latest
         version: 3.7.0(@tiptap/core@3.7.0(@tiptap/pm@3.7.0))
@@ -1326,6 +1335,21 @@ packages:
     resolution: {integrity: sha512-aijZWz7mCn2RUkqL3ZwTn1CYG9ETbryOIwVwX9fMs4xm3rwQ0D8dWBvZbkBEVg3CfZ2tz3HfWtMR0rbvcTl5Qg==}
     peerDependencies:
       '@tiptap/core': ^3.7.0
+
+  '@tiptap/extension-table-cell@3.7.0':
+    resolution: {integrity: sha512-bUpN28Egox1fAd6FEv++IjGsLjyIYwD9N8ok4EdOEwzeNSX8Jhf7gcTQB9rbiGUUQPLDTOaFooyPtuy1GQ02lg==}
+    peerDependencies:
+      '@tiptap/extension-table': ^3.7.0
+
+  '@tiptap/extension-table-header@3.7.0':
+    resolution: {integrity: sha512-E0C66f2sV1LePHllvqqCCbgwN1k6Ak7J7JcJng68kc2KPBNLAckISBIlNxuSjR1elOl3STaxYXRtxXHpUX4kHA==}
+    peerDependencies:
+      '@tiptap/extension-table': ^3.7.0
+
+  '@tiptap/extension-table-row@3.7.0':
+    resolution: {integrity: sha512-QpJHS7VtbP38Pg2ttguTEwo+2/qR1kXUK5lZDirRYT3uD9w0Yg/eKyQVFOMxcyLV+3AVffg+2uoHHdvLK7S9/Q==}
+    peerDependencies:
+      '@tiptap/extension-table': ^3.7.0
 
   '@tiptap/extension-table@3.7.0':
     resolution: {integrity: sha512-MDOJLDWqie9IBl83ywedxI+X5QmW/+qQueuYWC++024SwFIntzWsb3F3JMK+DlFIi2ZSrstZuJNJq7uWPbjNOQ==}
@@ -5058,6 +5082,18 @@ snapshots:
   '@tiptap/extension-strike@3.7.0(@tiptap/core@3.7.0(@tiptap/pm@3.7.0))':
     dependencies:
       '@tiptap/core': 3.7.0(@tiptap/pm@3.7.0)
+
+  '@tiptap/extension-table-cell@3.7.0(@tiptap/extension-table@3.7.0(@tiptap/core@3.7.0(@tiptap/pm@3.7.0))(@tiptap/pm@3.7.0))':
+    dependencies:
+      '@tiptap/extension-table': 3.7.0(@tiptap/core@3.7.0(@tiptap/pm@3.7.0))(@tiptap/pm@3.7.0)
+
+  '@tiptap/extension-table-header@3.7.0(@tiptap/extension-table@3.7.0(@tiptap/core@3.7.0(@tiptap/pm@3.7.0))(@tiptap/pm@3.7.0))':
+    dependencies:
+      '@tiptap/extension-table': 3.7.0(@tiptap/core@3.7.0(@tiptap/pm@3.7.0))(@tiptap/pm@3.7.0)
+
+  '@tiptap/extension-table-row@3.7.0(@tiptap/extension-table@3.7.0(@tiptap/core@3.7.0(@tiptap/pm@3.7.0))(@tiptap/pm@3.7.0))':
+    dependencies:
+      '@tiptap/extension-table': 3.7.0(@tiptap/core@3.7.0(@tiptap/pm@3.7.0))(@tiptap/pm@3.7.0)
 
   '@tiptap/extension-table@3.7.0(@tiptap/core@3.7.0(@tiptap/pm@3.7.0))(@tiptap/pm@3.7.0)':
     dependencies:

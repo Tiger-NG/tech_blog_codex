@@ -2,35 +2,64 @@ import { createError, defineEventHandler, readBody } from 'h3'
 import { getRouterParam } from 'h3'
 import { getPrismaClient } from '~/server/utils/prisma'
 import { requireAuth } from '~/server/utils/auth'
+import { z } from 'zod'
+import sanitizeHtml from 'sanitize-html'
 
 const prisma = getPrismaClient()
 
-export default defineEventHandler(async (event) => {
-  const slug = getRouterParam(event, 'slug')
+const slugSchema = z.object({
+  slug: z
+    .string({
+      required_error: 'Missing post slug'
+    })
+    .trim()
+    .min(1, 'Missing post slug')
+    .max(191, 'Invalid post slug')
+})
 
-  if (!slug) {
+const commentSchema = z.object({
+  content: z
+    .string({
+      required_error: '评论内容不能为空。'
+    })
+    .trim()
+    .min(1, '评论内容不能为空。')
+    .max(1000, '评论内容不能超过 1000 字。')
+})
+
+export default defineEventHandler(async (event) => {
+  const slugResult = slugSchema.safeParse({
+    slug: getRouterParam(event, 'slug')
+  })
+
+  if (!slugResult.success) {
     throw createError({
       statusCode: 400,
       statusMessage: 'Missing post slug'
     })
   }
 
+  const { slug } = slugResult.data
   const session = await requireAuth(event)
 
-  const body = await readBody<{ content?: string }>(event)
-  const content = body?.content?.trim() ?? ''
-
-  if (!content) {
+  const body = await readBody(event)
+  const parsedBody = commentSchema.safeParse(body)
+  if (!parsedBody.success) {
     throw createError({
       statusCode: 400,
-      statusMessage: '评论内容不能为空。'
+      statusMessage: parsedBody.error.issues[0]?.message ?? '评论内容不能为空。'
     })
   }
 
-  if (content.length > 1000) {
+  const sanitizedContent = sanitizeHtml(parsedBody.data.content, {
+    allowedTags: [],
+    allowedAttributes: {}
+  }).trim()
+
+  if (!sanitizedContent) {
     throw createError({
       statusCode: 400,
-      statusMessage: '评论内容不能超过 1000 字。'
+      statusMessage: '评论内容不能为空。'
     })
   }
 
@@ -77,7 +106,7 @@ export default defineEventHandler(async (event) => {
 
   const comment = await prisma.comment.create({
     data: {
-      content,
+      content: sanitizedContent,
       postId: post.id,
       authorId: session.user.id
     },

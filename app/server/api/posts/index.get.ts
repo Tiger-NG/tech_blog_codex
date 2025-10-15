@@ -1,14 +1,38 @@
-import { defineEventHandler, getQuery } from 'h3'
+import { defineEventHandler, getQuery, createError } from 'h3'
+import { z } from 'zod'
 import { getPrismaClient } from '~/server/utils/prisma'
 
 const prisma = getPrismaClient()
 // 公开列表页每页展示数量
 const PAGE_SIZE = 10
 
+const querySchema = z.object({
+  page: z
+    .string()
+    .trim()
+    .regex(/^\d+$/)
+    .transform((value) => {
+      const parsed = Number.parseInt(value, 10)
+      return Number.isNaN(parsed) || parsed < 1 ? 1 : parsed
+    })
+    .optional()
+})
+
 export default defineEventHandler(async (event) => {
   // 读取页码，未传时默认第 1 页
-  const { page = '1' } = getQuery(event)
-  const pageNumber = Number.parseInt(Array.isArray(page) ? page[0] : page, 10) || 1
+  const rawQuery = getQuery(event)
+  const normalizedQuery = {
+    page: Array.isArray(rawQuery.page) ? rawQuery.page[0] : rawQuery.page
+  }
+  const parsed = querySchema.safeParse(normalizedQuery)
+  if (!parsed.success) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Invalid query parameters.'
+    })
+  }
+
+  const pageNumber = parsed.data.page ?? 1
   const skip = (pageNumber - 1) * PAGE_SIZE
 
   // 并发获取总数和分页数据
