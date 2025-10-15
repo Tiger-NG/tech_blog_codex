@@ -40,12 +40,19 @@ const handleSubmit = async () => {
     isSubmitting.value = false
   }
 }
+
+const handleClose = () => {
+  router.push('/')
+}
 </script>
 
 <template>
   <section class="auth auth--login">
-    <div class="auth__background" aria-hidden="true"></div>
-    <div class="auth__shell">
+    <div class="auth__overlay" aria-hidden="true"></div>
+    <div class="auth__dialog">
+      <button type="button" class="auth__dialog-close" aria-label="关闭登录弹窗" @click="handleClose">
+        ×
+      </button>
       <div class="auth__brand">
         <span class="auth__brand-badge">Tech Blog</span>
         <h1 class="auth__title">欢迎回来</h1>
@@ -103,16 +110,25 @@ const handleSubmit = async () => {
 
 <style scoped>
 .auth {
-  position: relative;
-  min-height: calc(100dvh - 80px);
+  position: fixed;
+  inset: 0;
   display: grid;
   place-items: center;
-  padding: clamp(20px, 5vw, 56px) 0;
+  padding: clamp(20px, 5vw, 56px) clamp(16px, 4vw, 32px);
+  z-index: 1000;
 }
 
-.auth__shell {
+.auth__overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  pointer-events: none;
+}
+
+.auth__dialog {
   position: relative;
-  width: min(100%, 880px);
+  width: min(100% - clamp(32px, 8vw, 120px), 880px);
   margin-inline: auto;
   display: grid;
   gap: clamp(24px, 5vw, 40px);
@@ -121,27 +137,35 @@ const handleSubmit = async () => {
   padding: clamp(28px, 5vw, 48px);
   box-shadow: 0 24px 60px rgba(15, 23, 42, 0.32);
   color: #e2e8f0;
-  overflow: hidden;
   z-index: 1;
   align-items: center;
 }
 
-.auth__background {
+.auth__dialog-close {
   position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at top left, rgba(56, 189, 248, 0.28), transparent 55%),
-    radial-gradient(circle at bottom right, rgba(45, 212, 191, 0.24), transparent 60%);
-  filter: blur(80px);
-  opacity: 0.7;
-  pointer-events: none;
+  top: clamp(10px, 3vw, 18px);
+  right: clamp(10px, 3vw, 18px);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid rgba(226, 232, 240, 0.25);
+  background: rgba(15, 23, 42, 0.78);
+  color: rgba(226, 232, 240, 0.92);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.auth__dialog-close:hover {
+  background: rgba(148, 163, 184, 0.26);
+  transform: scale(1.06);
 }
 
 .auth__brand {
-  position: relative;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  z-index: 1;
 }
 
 .auth__brand-badge {
@@ -181,7 +205,27 @@ const handleSubmit = async () => {
   display: flex;
   flex-direction: column;
   gap: 20px;
-  z-index: 1;
+}
+
+.auth__close {
+  position: absolute;
+  top: clamp(8px, 2vw, 14px);
+  right: clamp(8px, 2vw, 14px);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(226, 232, 240, 0.25);
+  background: rgba(15, 23, 42, 0.75);
+  color: rgba(226, 232, 240, 0.9);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.auth__close:hover {
+  background: rgba(148, 163, 184, 0.2);
+  transform: scale(1.05);
 }
 
 .auth__form {
@@ -262,7 +306,7 @@ const handleSubmit = async () => {
 }
 
 @media (min-width: 860px) {
-  .auth__shell {
+  .auth__dialog {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: stretch;
   }
@@ -273,8 +317,8 @@ const handleSubmit = async () => {
 }
 
 @media (max-width: 640px) {
-  .auth {
-    min-height: 100vh;
+  .auth__dialog {
+    width: min(100% - 24px, 600px);
   }
 
   .auth__brand {
