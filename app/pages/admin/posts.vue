@@ -245,6 +245,11 @@ const formatDate = (value: string | null) => {
 
 <template>
   <section class="admin-posts">
+    <nav class="admin-posts__breadcrumb" aria-label="导航">
+      <NuxtLink to="/admin" class="admin-posts__breadcrumb-link">
+        ← 返回后台首页
+      </NuxtLink>
+    </nav>
     <header class="admin-posts__header">
       <h1>文章管理</h1>
       <p>创建新文章或管理现有内容。</p>
@@ -254,12 +259,8 @@ const formatDate = (value: string | null) => {
       <h2>{{ isEditing ? '编辑文章' : '新建文章' }}</h2>
       <div v-if="isEditing" class="admin-posts__editing-banner">
         <span>正在编辑：《{{ editingTitle }}》</span>
-        <button
-          type="button"
-          class="admin-posts__cancel"
-          :disabled="isSubmitting || editingState.loading"
-          @click="cancelEdit"
-        >
+        <button type="button" class="admin-posts__cancel" :disabled="isSubmitting || editingState.loading"
+          @click="cancelEdit">
           取消编辑
         </button>
       </div>
@@ -277,19 +278,12 @@ const formatDate = (value: string | null) => {
       <label>
         正文
         <ClientOnly>
-          <RichTextEditor
-            v-model="form.content"
-            placeholder="撰写文章内容…"
-            :editable="!isSubmitting && !editingState.loading"
-          />
+          <RichTextEditor v-model="form.content" placeholder="撰写文章内容…"
+            :editable="!isSubmitting && !editingState.loading" />
         </ClientOnly>
       </label>
 
-      <button
-        type="submit"
-        class="admin-posts__submit"
-        :disabled="isSubmitting || editingState.loading"
-      >
+      <button type="submit" class="admin-posts__submit" :disabled="isSubmitting || editingState.loading">
         {{ isSubmitting ? '保存中…' : isEditing ? '保存修改' : '保存为草稿' }}
       </button>
       <p v-if="message" class="admin-posts__message">
@@ -298,43 +292,62 @@ const formatDate = (value: string | null) => {
     </form>
 
     <section class="admin-posts__list">
-      <h2>文章列表</h2>
+      <header class="admin-posts__list-header">
+        <div>
+          <h2>文章列表</h2>
+          <p class="admin-posts__list-subtitle">
+            共 {{ pagination?.total ?? 0 }} 篇内容，快速查看并操作。
+          </p>
+        </div>
+      </header>
+
       <div v-if="status === 'pending'" class="admin-posts__loading">
         正在加载文章……
       </div>
       <div v-else-if="posts.length === 0" class="admin-posts__empty">
         还没有文章。
       </div>
-      <table v-else>
+
+      <table v-else class="admin-posts__table">
         <thead>
           <tr>
             <th>标题</th>
             <th>状态</th>
             <th>发布时间</th>
-            <th>操作</th>
+            <th class="admin-posts__table-actions-header">操作</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="post in posts" :key="post.id">
             <td>
-              <NuxtLink :to="`/posts/${post.slug}`" target="_blank">
+              <NuxtLink :to="`/posts/${post.slug}`" target="_blank" class="admin-posts__table-title">
                 {{ post.title }}
               </NuxtLink>
             </td>
-            <td>{{ post.status }}</td>
-            <td>{{ formatDate(post.publishedAt) }}</td>
-            <td class="admin-posts__actions">
-              <button
-                type="button"
-                :disabled="editingState.loading || (isEditing && editingState.id === post.id)"
-                @click="startEdit(post)"
-              >
+            <td>
+              <span class="admin-posts__table-status" :class="{
+                'is-published': post.status === 'PUBLISHED',
+                'is-draft': post.status === 'DRAFT',
+                'is-archived': post.status === 'ARCHIVED'
+              }">
+                {{ post.status === 'PUBLISHED' ? '已发布' : post.status === 'DRAFT' ? '草稿' : '归档' }}
+              </span>
+            </td>
+            <td>
+              <span class="admin-posts__table-time">
+                {{ formatDate(post.publishedAt ?? post.createdAt) }}
+              </span>
+            </td>
+            <td class="admin-posts__table-actions">
+              <button type="button" class="admin-posts__action-button"
+                :disabled="editingState.loading || (isEditing && editingState.id === post.id)" @click="startEdit(post)">
                 编辑
               </button>
-              <button type="button" @click="togglePublish(post)">
+              <button type="button" class="admin-posts__action-button" @click="togglePublish(post)">
                 {{ post.status === 'PUBLISHED' ? '下线' : '发布' }}
               </button>
-              <button type="button" class="danger" @click="handleDelete(post)">
+              <button type="button" class="admin-posts__action-button admin-posts__action-button--danger"
+                @click="handleDelete(post)">
                 删除
               </button>
             </td>
@@ -342,22 +355,15 @@ const formatDate = (value: string | null) => {
         </tbody>
       </table>
 
-      <nav v-if="pagination" class="pagination">
-        <NuxtLink
-          v-if="pagination.page > 1"
-          :to="{ query: { page: pagination.page - 1 } }"
-          class="pagination__link"
-        >
+      <nav v-if="pagination" class="pagination admin-posts__pagination">
+        <NuxtLink v-if="pagination.page > 1" :to="{ query: { page: pagination.page - 1 } }" class="pagination__link">
           上一页
         </NuxtLink>
         <span class="pagination__info">
           第 {{ pagination.page }} / {{ pagination.totalPages }} 页
         </span>
-        <NuxtLink
-          v-if="pagination.page < pagination.totalPages"
-          :to="{ query: { page: pagination.page + 1 } }"
-          class="pagination__link"
-        >
+        <NuxtLink v-if="pagination.page < pagination.totalPages" :to="{ query: { page: pagination.page + 1 } }"
+          class="pagination__link">
           下一页
         </NuxtLink>
       </nav>
@@ -457,54 +463,171 @@ const formatDate = (value: string | null) => {
   font-size: 13px;
 }
 
+.admin-posts__breadcrumb {
+  margin-bottom: 0;
+}
+
+.admin-posts__breadcrumb-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.admin-posts__breadcrumb-link:hover {
+  text-decoration: underline;
+}
+
+
 .admin-posts__list {
   background-color: #ffffff;
-  border-radius: 10px;
-  padding: 24px;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+  border-radius: 12px;
+  padding: clamp(22px, 4vw, 32px);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(18px, 3vw, 26px);
 }
 
-.admin-posts__list table {
+.admin-posts__list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: clamp(12px, 3vw, 24px);
+}
+
+.admin-posts__list-header h2 {
+  margin: 0;
+  font-size: clamp(20px, 2.4vw, 24px);
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.admin-posts__list-subtitle {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.admin-posts__overview-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 9999px;
+  background: rgba(37, 99, 235, 0.12);
+  color: #2563eb;
+  text-decoration: none;
+  font-size: 13px;
+}
+
+.admin-posts__overview-link:hover {
+  background: rgba(37, 99, 235, 0.18);
+}
+
+
+.admin-posts__table {
   width: 100%;
   border-collapse: collapse;
-}
-
-.admin-posts__list th,
-.admin-posts__list td {
-  padding: 12px;
-  text-align: left;
-  border-bottom: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
   font-size: 14px;
 }
 
-.admin-posts__actions {
+.admin-posts__table thead {
+  background: linear-gradient(135deg, rgba(226, 232, 240, 0.75), rgba(241, 245, 249, 0.95));
+  color: #0f172a;
+}
+
+.admin-posts__table th,
+.admin-posts__table td {
+  padding: 14px;
+  text-align: left;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.7);
+}
+
+.admin-posts__table-title {
+  color: #0f172a;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.admin-posts__table-title:hover {
+  text-decoration: underline;
+}
+
+.admin-posts__table-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  background: rgba(148, 163, 184, 0.16);
+  color: #475569;
+  font-size: 12px;
+}
+
+.admin-posts__table-status.is-published {
+  background: rgba(34, 197, 94, 0.15);
+  color: #15803d;
+}
+
+.admin-posts__table-status.is-draft {
+  background: rgba(250, 204, 21, 0.15);
+  color: #92400e;
+}
+
+.admin-posts__table-status.is-archived {
+  background: rgba(148, 163, 184, 0.28);
+  color: #475569;
+}
+
+.admin-posts__table-time {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.admin-posts__table-actions {
   display: flex;
-  gap: 8px;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
-.admin-posts__actions button {
-  border: none;
-  border-radius: 6px;
-  padding: 6px 12px;
+.admin-posts__table-actions-header {
+  text-align: right;
+}
+
+.admin-posts__action-button {
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 9999px;
+  padding: 6px 14px;
+  background: rgba(226, 232, 240, 0.4);
+  font-size: 13px;
   cursor: pointer;
-  background-color: #e5e7eb;
+  transition: background 0.2s ease, transform 0.2s ease;
 }
 
-.admin-posts__actions button:hover {
-  background-color: #d1d5db;
+.admin-posts__action-button:hover:not(:disabled) {
+  background: rgba(148, 163, 184, 0.35);
+  transform: translateY(-1px);
 }
 
-.admin-posts__actions button:disabled {
+.admin-posts__action-button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
-.admin-posts__actions .danger {
-  background-color: #fca5a5;
+.admin-posts__action-button--danger {
+  border-color: rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
 }
 
-.admin-posts__actions .danger:hover {
-  background-color: #f87171;
+.admin-posts__action-button--danger:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.18);
 }
 
 .admin-posts__loading,
