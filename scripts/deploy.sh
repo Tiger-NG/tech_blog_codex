@@ -1,6 +1,22 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# --- bootstrap Node/NVM/PNPM for non-login shells ---
+export NVM_DIR="$HOME/.nvm"
+if [ -s "$NVM_DIR/nvm.sh" ]; then
+  . "$NVM_DIR/nvm.sh"
+fi
+# 锁到你的版本
+nvm use 24.4.1 >/dev/null
+
+# 启用 corepack 并确保 pnpm 在 PATH 中
+corepack enable >/dev/null 2>&1 || true
+export PATH="$HOME/.local/share/pnpm:$PATH"
+
+#（可选）打印版本，便于排错
+node -v
+pnpm -v
+
 APP_DIR="/var/www/tech_blog_codex"
 cd "$APP_DIR"
 
