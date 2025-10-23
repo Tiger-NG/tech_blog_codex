@@ -94,7 +94,7 @@ const visitPage = (target: number) => {
       <div class="home__hero-content">
         <p class="home__eyebrow">Tech Blog · Inspired by GitHub</p>
         <h1 class="home__title">
-          构建、分享、持续精进。
+          构建、分享、持续精进。CI/CD完成了！
         </h1>
         <p class="home__subtitle">
           汇聚现代 Web 技术文章、经验与实践笔记。像维护仓库一样维护知识，与社区一起成长。
