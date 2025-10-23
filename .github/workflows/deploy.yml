@@ -8,6 +8,7 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -26,16 +27,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # （可选）如果要在 CI 先 build 再只传 .output 到服务器，在这里加：
-      # - name: Build project
-      #   run: pnpm build
-
       - name: Add server to known_hosts
         run: |
           mkdir -p ~/.ssh
           ssh-keyscan -p "${{ secrets.SSH_PORT }}" "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
 
-      - name: Upload files to server
+      - name: Upload files to server (rsync)
         uses: burnett01/rsync-deployments@6.0.0
         with:
           switches: -avzr --delete --exclude=".git" --exclude="node_modules"
@@ -46,8 +43,11 @@ jobs:
           remote_key: ${{ secrets.SSH_PRIVATE_KEY }}
           remote_port: ${{ secrets.SSH_PORT }}
 
+      # 把 Secret 先映射到 env，再用 if 判断 env 是否为空
       - name: Write .env to server
-        if: ${{ secrets.ENV_FILE_CONTENT != '' }}
+        env:
+          ENV_FILE_CONTENT: ${{ secrets.ENV_FILE_CONTENT }}
+        if: ${{ env.ENV_FILE_CONTENT != '' }}
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -56,7 +56,7 @@ jobs:
           port: ${{ secrets.SSH_PORT }}
           script: |
             cat > ${{ secrets.REMOTE_DIR }}/.env << 'EOF'
-            ${{ secrets.ENV_FILE_CONTENT }}
+            ${{ env.ENV_FILE_CONTENT }}
             EOF
 
       - name: Run deploy.sh on server
