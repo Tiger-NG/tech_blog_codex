@@ -69,4 +69,5 @@ jobs:
           script: |
             cd ${{ secrets.REMOTE_DIR }}
             chmod +x scripts/deploy.sh
+            chmod +x scripts/run.sh
             ./scripts/deploy.sh
