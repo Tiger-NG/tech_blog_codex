@@ -68,4 +68,5 @@ jobs:
           port: ${{ secrets.SSH_PORT }}
           script: |
             cd ${{ secrets.REMOTE_DIR }}
+            chmod +x scripts/deploy.sh
             ./deploy.sh
